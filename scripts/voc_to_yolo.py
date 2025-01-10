@@ -1,6 +1,5 @@
 # Import necessary libraries
 import os
-import shutil
 import xml.etree.ElementTree as ET
 from PIL import Image
 import zipfile
@@ -101,12 +100,14 @@ def process_and_merge_folders(base_folder, images_folder, labels_folder, label_m
                     print(f"Image file for {file} not found. Skipping.")
                     continue
 
-                # Copy image to images folder
+                # Move image to images folder
                 os.makedirs(images_folder, exist_ok=True)
-                shutil.copy(img_path, os.path.join(images_folder, os.path.basename(img_path)))
+                target_image_path = os.path.join(images_folder, os.path.basename(img_path))
+                if not os.path.exists(target_image_path):
+                    os.rename(img_path, target_image_path)
 
                 # Get image dimensions
-                with Image.open(img_path) as img:
+                with Image.open(target_image_path) as img:
                     img_width, img_height = img.size
 
                 # Convert annotations
