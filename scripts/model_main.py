@@ -1,29 +1,28 @@
 """
-Use a YOLO Predefined Model (v5, v8, v11) with Webcam
+Use a YOLO Predefined Model (v5, v8) with Webcam
 python yolo_input_script.py --model v8 --webcam 0
 
 Use a YOLO Predefined Model with an Image or Video
 python yolo_input_script.py --model v5 --input ./data/image.jpg
-python yolo_input_script.py --model v11 --input ./data/video.mp4
+python yolo_input_script.py --model v8 --input ./data/video.mp4
 
+Use a Custom YOLO Model
 python yolo_input_script.py --model custom1 --input ./data/image.jpg
 
 CHANGE THE CUSTOM MODELS VARIABLE TO YOUR ACTUAL MODELS!!!!!!!!
 """
 
-
-
 import argparse
 import cv2
 import os
-import torch
 from pathlib import Path
+from ultralytics import YOLO  # Use for YOLOv8
+import torch
 
 # Predefined YOLO models
 YOLO_MODELS = {
-    "v5": "ultralytics/yolov5",
-    "v8": "ultralytics/yolov8",
-    "v11": "ultralytics/yolov11"
+    "v5": "ultralytics/yolov5",  # YOLOv5 using PyTorch Hub
+    "v8": "ultralytics/yolov8"   # YOLOv8 using Ultralytics
 }
 
 # Custom models directory
@@ -34,18 +33,17 @@ CUSTOM_MODELS = {
 
 # Function to load YOLO model
 def load_model(model_name):
-    if model_name in YOLO_MODELS:
-        try:
-            print(f"Loading predefined YOLO model: {model_name}")
-            return torch.hub.load(YOLO_MODELS[model_name], 'yolov5s' if model_name == 'v5' else 'yolov8n' if model_name == 'v8' else 'yolov11n')
-        except Exception:
-            print(f"Error loading predefined YOLO model: {model_name}. Attempting to download...")
-            return torch.hub.load(YOLO_MODELS[model_name], 'yolov5s' if model_name == 'v5' else 'yolov8n' if model_name == 'v8' else 'yolov11n')
+    if model_name == "v8":
+        print(f"Loading YOLOv8 model using Ultralytics...")
+        return YOLO("yolov8n.pt")  # Loads YOLOv8n from Ultralytics
+    elif model_name == "v5":
+        print(f"Loading YOLOv5 model using PyTorch Hub...")
+        return torch.hub.load('ultralytics/yolov5', 'yolov5s')  # YOLOv5 using PyTorch Hub
     elif model_name in CUSTOM_MODELS:
         custom_path = Path(CUSTOM_MODELS[model_name])
         if custom_path.is_file():
             print(f"Loading custom YOLO model: {model_name} from {custom_path}")
-            return torch.hub.load(YOLO_MODELS['v5'], 'custom', path=str(custom_path))
+            return YOLO(str(custom_path))  # Load custom YOLO model
         else:
             raise FileNotFoundError(f"Custom model '{model_name}' not found at {custom_path}.")
     else:
@@ -118,7 +116,7 @@ def process_files(model, input_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="YOLO Object Detection Script")
-    parser.add_argument("--model", required=True, help="YOLO model to use: predefined model name (v5, v8, v11) or custom model name from predefined list.")
+    parser.add_argument("--model", required=True, help="YOLO model to use: predefined model name (v5, v8) or custom model name from predefined list.")
     parser.add_argument("--input", help="Path to an image, video, or directory containing images.")
     parser.add_argument("--webcam", type=int, help="Webcam index (0, 1, 2, etc.).")
 
