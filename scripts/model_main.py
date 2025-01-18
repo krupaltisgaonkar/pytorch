@@ -55,8 +55,12 @@ def load_model(model_name):
 
 # Function to process frames with YOLO
 def process_frame(model, frame):
-    results = model(frame)
-    return results.render()[0]  # Rendered frame with bounding boxes
+    # Inference using the YOLO model
+    results = model(frame)  # Perform detection
+    if isinstance(results, list):  # YOLOv5 case
+        return results.render()[0]  # Render the frame
+    else:  # YOLOv8 case
+        return results[0].plot()  # Render the frame with bounding boxes
 
 # Process webcam input
 def process_webcam(model, webcam_index):
