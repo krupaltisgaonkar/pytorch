@@ -1,66 +1,65 @@
-"""
-Use a YOLO Predefined Model (v5, v8) with Webcam
-python yolo_input_script.py --model v8 --webcam 0
-
-Use a YOLO Predefined Model with an Image or Video
-python yolo_input_script.py --model v5 --input ./data/image.jpg
-python yolo_input_script.py --model v8 --input ./data/video.mp4
-
-Use a Custom YOLO Model
-python yolo_input_script.py --model custom1 --input ./data/image.jpg
-
-CHANGE THE CUSTOM MODELS VARIABLE TO YOUR ACTUAL MODELS!!!!!!!!
-"""
-
 import argparse
 import cv2
-import os
 from pathlib import Path
-from ultralytics import YOLO  # Use for YOLOv8
+from ultralytics import YOLO  # For YOLOv8
 import torch
+import time
+
+# Custom models
+CUSTOM_MODELS = {
+    "custom1": "./models/custom_model1.pt",
+    "custom2": "./models/custom_model2.pt",
+}
 
 # Predefined YOLO models
 YOLO_MODELS = {
     "v5": "ultralytics/yolov5",  # YOLOv5 using PyTorch Hub
-    "v8": "ultralytics/yolov8",# YOLOv8 using Ultralytics
-    "v11": "ultralytics/yolov11"
+    "v8": "ultralytics/yolov8",  # YOLOv8 using Ultralytics
+    "v11": "ultralytics/yolov11"  # Hypothetical YOLOv11 (update if available)
 }
 
-# Custom models directory
-CUSTOM_MODELS = {
-    "custom1": "./models/custom_model1.pt",
-    "custom2": "./models/custom_model2.pt"
-}
-
-# Function to load YOLO model
+# Load YOLO model
 def load_model(model_name):
     if model_name == "v8":
-        print(f"Loading YOLOv8 model using Ultralytics...")
+        print("Loading YOLOv8 model...")
         return YOLO("yolov8n.pt")  # Loads YOLOv8n from Ultralytics
     elif model_name == "v5":
-        print(f"Loading YOLOv5 model using PyTorch Hub...")
-        return torch.hub.load('ultralytics/yolov5', 'yolov5s')  # YOLOv5 using PyTorch Hub
-    elif model_name == "v11"
-        print(f"Lodaing YOLOv11 model using Ultralytics")
-        return YOLO("yolov11n.pt")
+        print("Loading YOLOv5 model...")
+        return torch.hub.load("ultralytics/yolov5", "yolov5s")  # YOLOv5 via PyTorch Hub
+    elif model_name == "v11":
+        print("Loading YOLOv11 model...")
+        # Replace 'yolov11n.pt' with the correct path or method to load YOLOv11
+        return YOLO("yolo11n.pt")  # Adjust if YOLOv11 uses a different API
     elif model_name in CUSTOM_MODELS:
         custom_path = Path(CUSTOM_MODELS[model_name])
         if custom_path.is_file():
-            print(f"Loading custom YOLO model: {model_name} from {custom_path}")
+            print(f"Loading custom YOLO model from {custom_path}")
             return YOLO(str(custom_path))  # Load custom YOLO model
         else:
             raise FileNotFoundError(f"Custom model '{model_name}' not found at {custom_path}.")
     else:
-        raise ValueError(f"Model '{model_name}' is not recognized. Available options are: {list(YOLO_MODELS.keys()) + list(CUSTOM_MODELS.keys())}.")
+        raise ValueError(f"Unrecognized model '{model_name}'. Choose from {list(YOLO_MODELS.keys()) + list(CUSTOM_MODELS.keys())}.")
 
 # Function to process frames with YOLO
-def process_frame(model, frame):
-    # Inference using the YOLO model
-    results = model(frame)  # Perform detection
-    if isinstance(results, list):  # YOLOv5 case
-        return results.render()[0]  # Render the frame
-    else:  # YOLOv8 case
-        return results[0].plot()  # Render the frame with bounding boxes
+def process_frame(model, frame, confidence_threshold=0.5):
+    results = model(frame)  # Run YOLO model on the frame
+    detections = results[0].boxes  # Access detected boxes (YOLOv8-specific)
+
+    # Filter detections based on confidence threshold
+    filtered_boxes = [box for box in detections if box.conf.item() >= confidence_threshold]
+
+    # Draw bounding boxes on the frame
+    for box in filtered_boxes:
+        x1, y1, x2, y2 = map(int, box.xyxy[0])  # Bounding box coordinates
+        conf = box.conf.item()  # Confidence score
+        cls = int(box.cls.item())  # Class ID
+        label = f"{model.names[cls]} {conf:.2f}"
+
+        # Draw the box and label
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box
+        cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    return frame
 
 # Process webcam input
 def process_webcam(model, webcam_index):
@@ -70,13 +69,25 @@ def process_webcam(model, webcam_index):
         return
 
     print("Press 'q' to exit.")
+    prev_time = time.time()
+
     while True:
         ret, frame = cap.read()
         if not ret:
             print("Error: Unable to fetch frame from webcam.")
             break
 
+        # Process frame
         processed_frame = process_frame(model, frame)
+
+        # Calculate and display FPS
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time)
+        prev_time = curr_time
+        fps_text = f"FPS: {fps:.2f}"
+        cv2.putText(processed_frame, fps_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        # Display the frame
         cv2.imshow(f"Webcam {webcam_index}", processed_frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -85,24 +96,21 @@ def process_webcam(model, webcam_index):
     cap.release()
     cv2.destroyAllWindows()
 
-# Process video or image files
+# Process image or video files
 def process_files(model, input_path):
     input_path = Path(input_path)
-
     if input_path.is_file():
-        cap = cv2.VideoCapture(str(input_path)) if input_path.suffix in ['.mp4', '.avi', '.mov'] else None
+        cap = cv2.VideoCapture(str(input_path)) if input_path.suffix in [".mp4", ".avi", ".mov"] else None
 
         if cap:  # Video file
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
                     break
-
                 processed_frame = process_frame(model, frame)
                 cv2.imshow("Video", processed_frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
-
             cap.release()
         else:  # Image file
             frame = cv2.imread(str(input_path))
@@ -110,27 +118,23 @@ def process_files(model, input_path):
                 processed_frame = process_frame(model, frame)
                 cv2.imshow("Image", processed_frame)
                 cv2.waitKey(0)
-
-    elif input_path.is_dir():
+    elif input_path.is_dir():  # Process directory
         for file in input_path.iterdir():
-            if file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']:
+            if file.suffix.lower() in [".jpg", ".jpeg", ".png", ".bmp"]:
                 frame = cv2.imread(str(file))
                 if frame is not None:
                     processed_frame = process_frame(model, frame)
                     cv2.imshow(f"Image - {file.name}", processed_frame)
                     cv2.waitKey(0)
-
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="YOLO Object Detection Script")
-    parser.add_argument("--model", required=True, help="YOLO model to use: predefined model name (v5, v8) or custom model name from predefined list.")
-    parser.add_argument("--input", help="Path to an image, video, or directory containing images.")
-    parser.add_argument("--webcam", type=int, help="Webcam index (0, 1, 2, etc.).")
+    parser = argparse.ArgumentParser(description="YOLO Object Detection")
+    parser.add_argument("--model", required=True, help="Model to use: v5, v8, or custom.")
+    parser.add_argument("--input", help="Path to image/video or directory.")
+    parser.add_argument("--webcam", type=int, help="Webcam index (0, 1, 2, etc.)")
 
     args = parser.parse_args()
-
-    # Load YOLO model
     model = load_model(args.model)
 
     if args.webcam is not None:
@@ -138,4 +142,4 @@ if __name__ == "__main__":
     elif args.input:
         process_files(model, args.input)
     else:
-        print("Error: You must specify either --webcam or --input.")
+        print("Error: Specify --webcam or --input.")
