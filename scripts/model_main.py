@@ -22,7 +22,8 @@ import torch
 # Predefined YOLO models
 YOLO_MODELS = {
     "v5": "ultralytics/yolov5",  # YOLOv5 using PyTorch Hub
-    "v8": "ultralytics/yolov8"   # YOLOv8 using Ultralytics
+    "v8": "ultralytics/yolov8",# YOLOv8 using Ultralytics
+    "v11": "ultralytics/yolov11"
 }
 
 # Custom models directory
@@ -39,6 +40,9 @@ def load_model(model_name):
     elif model_name == "v5":
         print(f"Loading YOLOv5 model using PyTorch Hub...")
         return torch.hub.load('ultralytics/yolov5', 'yolov5s')  # YOLOv5 using PyTorch Hub
+    elif model_name == "v11"
+        print(f"Lodaing YOLOv11 model using Ultralytics")
+        return YOLO("yolov11n.pt")
     elif model_name in CUSTOM_MODELS:
         custom_path = Path(CUSTOM_MODELS[model_name])
         if custom_path.is_file():
