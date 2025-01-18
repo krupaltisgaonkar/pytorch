@@ -3,6 +3,9 @@ Prepare your dataset by create a virtual env on your local computer and run `pip
 Shortcuts:
 
 W: write
+
 D: next image
+
 A: last image
+
 Ctrl+S: save
