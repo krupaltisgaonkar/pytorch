@@ -9,3 +9,5 @@ D: next image
 A: last image
 
 Ctrl+S: save
+
+> NOTE: you will be able to find your classes.txt file in the place where you put your labels directory.
