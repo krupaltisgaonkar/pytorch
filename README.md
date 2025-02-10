@@ -11,3 +11,4 @@ A: last image
 Ctrl+S: save
 
 > NOTE: you will be able to find your classes.txt file in the place where you put your labels directory.
+After annotating, move the classes.txt file to the root directory of your dataset. Then zip it and upload it to the colab notebook.
